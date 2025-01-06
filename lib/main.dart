@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'login_page.dart';
+import 'profile_page.dart';
 
 // Model untuk item keranjang
 class CartItem {
@@ -118,12 +120,12 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const LoginPage(),
       debugShowCheckedModeBanner: false,
       // Tambahkan error handling untuk route
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
-          builder: (context) => const HomePage(),
+          builder: (context) => const LoginPage(),
         );
       },
     );
@@ -131,7 +133,8 @@ class MyApp extends StatelessWidget {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String username;
+  const HomePage({super.key, required this.username});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -143,6 +146,7 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   final List<CartItem> _cartItems = [];
   final List<MenuItem> _favoriteItems = []; // Untuk menyimpan menu favorit
+  String _searchQuery = ''; // Tambahkan variabel untuk query pencarian
 
   // Daftar menu
   final List<MenuItem> _menuItems = [
@@ -222,12 +226,15 @@ class _HomePageState extends State<HomePage> {
     ),
   ];
 
-  // Filter menu berdasarkan kategori
+  // Filter menu berdasarkan kategori dan pencarian
   List<MenuItem> get filteredMenu {
-    if (_selectedCategory == 'all') {
-      return _menuItems;
-    }
-    return _menuItems.where((item) => item.category == _selectedCategory).toList();
+    return _menuItems.where((item) {
+      bool matchesCategory = _selectedCategory == 'all' || item.category == _selectedCategory;
+      bool matchesSearch = _searchQuery.isEmpty ||
+          item.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    }).toList();
   }
 
   void _selectCategory(String category) {
@@ -855,6 +862,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _openProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfilePage(username: widget.username),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -863,8 +879,19 @@ class _HomePageState extends State<HomePage> {
         title: TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: 'Cari Makanan',
+            hintText: 'Cari Menu',
             prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    setState(() {
+                      _searchController.clear();
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
               borderSide: BorderSide.none,
@@ -876,6 +903,11 @@ class _HomePageState extends State<HomePage> {
               vertical: AppPadding.small,
             ),
           ),
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value;
+            });
+          },
         ),
         backgroundColor: Colors.green,
         elevation: 2,
@@ -925,7 +957,7 @@ class _HomePageState extends State<HomePage> {
               size: screenWidth * 0.06,
             ),
             padding: EdgeInsets.all(AppPadding.small),
-            onPressed: () {},
+            onPressed: _openProfile,
           ),
         ],
       ),
@@ -1005,7 +1037,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Inisialisasi data dengan error handling
+    // Tambahkan listener untuk pencarian
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
     try {
       _loadInitialData();
     } catch (e) {
