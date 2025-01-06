@@ -395,22 +395,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _removeFromCart(int index) {
-    setState(() {
-      _cartItems.removeAt(index);
-    });
+    if (index >= 0 && index < _cartItems.length) {
+      setState(() {
+        _cartItems.removeAt(index);
+      });
+    }
   }
 
   void _updateQuantity(int index, bool increment) {
-    setState(() {
-      if (increment) {
-        _cartItems[index].quantity++;
-      } else if (_cartItems[index].quantity > 1) {
-        _cartItems[index].quantity--;
-      }
-    });
+    if (index >= 0 && index < _cartItems.length) {
+      setState(() {
+        if (increment) {
+          _cartItems[index].quantity++;
+        } else if (_cartItems[index].quantity > 1) {
+          _cartItems[index].quantity--;
+        } else {
+          // Jika quantity 1 dan dikurangi, hapus item
+          _cartItems.removeAt(index);
+        }
+      });
+    }
   }
 
   void _showCart() {
+    if (!mounted) return;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -436,10 +445,30 @@ class _HomePageState extends State<HomePage> {
             const Divider(),
             Expanded(
               child: _cartItems.isEmpty
-                  ? const Center(child: Text('Keranjang kosong'))
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.shopping_cart_outlined,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Keranjang kosong',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: _cartItems.length,
                       itemBuilder: (context, index) {
+                        if (index >= _cartItems.length) return null;
                         final item = _cartItems[index];
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 8),
@@ -454,6 +483,17 @@ class _HomePageState extends State<HomePage> {
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 60,
+                                        height: 60,
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.image_not_supported,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -465,7 +505,14 @@ class _HomePageState extends State<HomePage> {
                                         item.name,
                                         style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
-                                      Text(item.price),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item.price,
+                                        style: const TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -474,15 +521,33 @@ class _HomePageState extends State<HomePage> {
                                     IconButton(
                                       icon: const Icon(Icons.remove),
                                       onPressed: () => _updateQuantity(index, false),
+                                      color: Colors.green,
                                     ),
-                                    Text('${item.quantity}'),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.grey),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '${item.quantity}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                     IconButton(
                                       icon: const Icon(Icons.add),
                                       onPressed: () => _updateQuantity(index, true),
+                                      color: Colors.green,
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.delete),
                                       onPressed: () => _removeFromCart(index),
+                                      color: Colors.red,
                                     ),
                                   ],
                                 ),
