@@ -295,6 +295,13 @@ class _HomePageState extends State<HomePage> {
                 child: Image.asset(
                   'assets/$image.jpg',
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.image_not_supported,
+                      size: screenWidth * 0.1,
+                      color: Colors.grey[400],
+                    );
+                  },
                 ),
               ),
             ),
@@ -744,15 +751,13 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            _buildPromoPage(),
-            _buildHomePage(),
-            _buildFavoritePage(),
-          ],
-        ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          SingleChildScrollView(child: _buildPromoPage()),
+          SingleChildScrollView(child: _buildHomePage()),
+          SingleChildScrollView(child: _buildFavoritePage()),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
