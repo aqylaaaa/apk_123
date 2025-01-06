@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // Model untuk item keranjang
 class CartItem {
@@ -34,7 +35,69 @@ class MenuItem {
   });
 }
 
+// Tambahkan class AppPadding setelah class CartItem
+class AppPadding {
+  static const double xs = 4.0;
+  static const double small = 8.0;
+  static const double medium = 16.0;
+  static const double large = 24.0;
+  static const double xl = 32.0;
+
+  static EdgeInsets get screenPadding => const EdgeInsets.symmetric(
+    horizontal: medium,
+    vertical: small,
+  );
+
+  static EdgeInsets get cardPadding => const EdgeInsets.all(medium);
+  
+  static EdgeInsets get listItemPadding => const EdgeInsets.symmetric(
+    vertical: small,
+    horizontal: medium,
+  );
+
+  static double getResponsivePadding(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth < 360) {
+      return small;
+    } else if (screenWidth < 400) {
+      return medium;
+    } else {
+      return large;
+    }
+  }
+}
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Error handling untuk aplikasi
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      child: Container(
+        color: Colors.white,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 60,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Terjadi kesalahan',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  };
+
   runApp(const MyApp());
 }
 
@@ -43,6 +106,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Set orientasi aplikasi ke portrait saja
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
     return MaterialApp(
       title: 'Happy\'s Food',
       theme: ThemeData(
@@ -51,6 +120,12 @@ class MyApp extends StatelessWidget {
       ),
       home: const HomePage(),
       debugShowCheckedModeBanner: false,
+      // Tambahkan error handling untuk route
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => const HomePage(),
+        );
+      },
     );
   }
 }
@@ -168,39 +243,44 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCategoryItem(String icon, String label) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final isSelected = _selectedCategory == icon || 
                       (icon == 'star' && _selectedCategory == 'super');
-    return InkWell(
-      onTap: () => _selectCategory(icon == 'star' ? 'super' : icon),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.2,
-        height: MediaQuery.of(context).size.width * 0.2,
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green : Colors.grey[300],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon == 'eat' ? Icons.restaurant : 
-              icon == 'drink' ? Icons.local_drink :
-              icon == 'snack' ? Icons.lunch_dining :
-              Icons.star,
-              size: MediaQuery.of(context).size.width * 0.06,
-              color: isSelected ? Colors.white : Colors.black,
+    return Container(
+      width: screenWidth * 0.22,
+      margin: EdgeInsets.all(AppPadding.xs),
+      child: Material(
+        color: isSelected ? Colors.green : Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => _selectCategory(icon == 'star' ? 'super' : icon),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: EdgeInsets.all(AppPadding.small),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon == 'eat' ? Icons.restaurant : 
+                  icon == 'drink' ? Icons.local_drink :
+                  icon == 'snack' ? Icons.lunch_dining :
+                  Icons.star,
+                  size: screenWidth * 0.06,
+                  color: isSelected ? Colors.white : Colors.black87,
+                ),
+                SizedBox(height: AppPadding.xs),
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.028,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            const SizedBox(height: 5),
-            Text(
-              label.toUpperCase(),
-              style: TextStyle(
-                fontSize: MediaQuery.of(context).size.width * 0.03,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : Colors.black,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -226,6 +306,13 @@ class _HomePageState extends State<HomePage> {
               height: screenWidth * 0.2,
               width: screenWidth * 0.25,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(
+                  Icons.image_not_supported,
+                  size: screenWidth * 0.1,
+                  color: Colors.grey[400],
+                );
+              },
             ),
           ),
           SizedBox(height: screenWidth * 0.02),
@@ -254,19 +341,22 @@ class _HomePageState extends State<HomePage> {
 
   // Fungsi untuk menambah/menghapus menu favorit
   void _toggleFavorite(MenuItem item) {
-    setState(() {
-      if (_isFavorite(item.name)) {
-        _favoriteItems.removeWhere((favItem) => favItem.name == item.name);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${item.name} dihapus dari favorit')),
-        );
-      } else {
-        _favoriteItems.add(item);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${item.name} ditambahkan ke favorit')),
-        );
-      }
-    });
+    if (!_isContextValid) return;
+
+    try {
+      setState(() {
+        if (_isFavorite(item.name)) {
+          _favoriteItems.removeWhere((favItem) => favItem.name == item.name);
+          _showSnackBar('${item.name} dihapus dari favorit');
+        } else {
+          _favoriteItems.add(item);
+          _showSnackBar('${item.name} ditambahkan ke favorit');
+        }
+      });
+    } catch (e) {
+      print('Error toggling favorite: $e');
+      _showSnackBar('Gagal mengubah status favorit');
+    }
   }
 
   Widget _buildMenuItem(String image, String name, String description, String price) {
@@ -276,18 +366,22 @@ class _HomePageState extends State<HomePage> {
 
     return Card(
       margin: EdgeInsets.symmetric(
-        vertical: screenWidth * 0.02,
-        horizontal: screenWidth * 0.04
+        vertical: AppPadding.small,
+        horizontal: AppPadding.medium,
+      ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: EdgeInsets.all(screenWidth * 0.03),
+        padding: AppPadding.cardPadding,
         child: Row(
           children: [
             Container(
-              width: screenWidth * 0.25,
-              height: screenWidth * 0.25,
+              width: screenWidth * 0.2,
+              height: screenWidth * 0.2,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: ClipRRect(
@@ -298,14 +392,14 @@ class _HomePageState extends State<HomePage> {
                   errorBuilder: (context, error, stackTrace) {
                     return Icon(
                       Icons.image_not_supported,
-                      size: screenWidth * 0.1,
+                      size: screenWidth * 0.08,
                       color: Colors.grey[400],
                     );
                   },
                 ),
               ),
             ),
-            SizedBox(width: screenWidth * 0.04),
+            SizedBox(width: AppPadding.medium),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,8 +411,8 @@ class _HomePageState extends State<HomePage> {
                         child: Text(
                           name,
                           style: TextStyle(
-                            fontSize: screenWidth * 0.04,
-                            fontWeight: FontWeight.bold
+                            fontSize: screenWidth * 0.035,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -326,26 +420,32 @@ class _HomePageState extends State<HomePage> {
                         icon: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
                           color: isFavorite ? Colors.red : Colors.grey,
+                          size: screenWidth * 0.05,
                         ),
                         onPressed: () => _toggleFavorite(menuItem),
+                        padding: EdgeInsets.all(AppPadding.xs),
+                        constraints: BoxConstraints(
+                          minWidth: screenWidth * 0.08,
+                          minHeight: screenWidth * 0.08,
+                        ),
                       ),
                     ],
                   ),
-                  SizedBox(height: screenWidth * 0.01),
+                  SizedBox(height: AppPadding.xs),
                   Text(
                     description,
                     style: TextStyle(
-                      fontSize: screenWidth * 0.03,
-                      color: Colors.grey[600]
+                      fontSize: screenWidth * 0.028,
+                      color: Colors.grey[600],
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: screenWidth * 0.01),
+                  SizedBox(height: AppPadding.small),
                   Text(
                     price,
                     style: TextStyle(
-                      fontSize: screenWidth * 0.04,
+                      fontSize: screenWidth * 0.035,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
@@ -353,17 +453,21 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            SizedBox(width: screenWidth * 0.02),
+            SizedBox(width: AppPadding.small),
             ElevatedButton(
               onPressed: () => _addToCart(image, name, price),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.all(screenWidth * 0.03),
+                padding: EdgeInsets.all(AppPadding.small),
+                minimumSize: Size(screenWidth * 0.1, screenWidth * 0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: Icon(
                 Icons.shopping_cart,
-                size: screenWidth * 0.05,
+                size: screenWidth * 0.045,
               ),
             ),
           ],
@@ -373,25 +477,30 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _addToCart(String image, String name, String price) {
-    setState(() {
-      final existingItem = _cartItems.firstWhere(
-        (item) => item.name == name,
-        orElse: () => CartItem(image: '', name: '', price: ''),
-      );
+    if (!_isContextValid) return;
 
-      if (existingItem.name.isNotEmpty) {
-        existingItem.quantity++;
-      } else {
-        _cartItems.add(CartItem(
-          image: image,
-          name: name,
-          price: price,
-        ));
-      }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$name ditambahkan ke keranjang')),
-    );
+    try {
+      setState(() {
+        final existingItem = _cartItems.firstWhere(
+          (item) => item.name == name,
+          orElse: () => CartItem(image: '', name: '', price: ''),
+        );
+
+        if (existingItem.name.isNotEmpty) {
+          existingItem.quantity++;
+        } else {
+          _cartItems.add(CartItem(
+            image: image,
+            name: name,
+            price: price,
+          ));
+        }
+      });
+      _showSnackBar('$name ditambahkan ke keranjang');
+    } catch (e) {
+      print('Error adding to cart: $e');
+      _showSnackBar('Gagal menambahkan ke keranjang');
+    }
   }
 
   void _removeFromCart(int index) {
@@ -763,12 +872,13 @@ class _HomePageState extends State<HomePage> {
             filled: true,
             fillColor: Colors.white,
             contentPadding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.04,
-              vertical: screenWidth * 0.02
+              horizontal: AppPadding.medium,
+              vertical: AppPadding.small,
             ),
           ),
         ),
         backgroundColor: Colors.green,
+        elevation: 2,
         actions: [
           Stack(
             children: [
@@ -778,14 +888,15 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.white,
                   size: screenWidth * 0.06,
                 ),
+                padding: EdgeInsets.all(AppPadding.small),
                 onPressed: _showCart,
               ),
               if (_cartItems.isNotEmpty)
                 Positioned(
-                  right: 0,
-                  top: 0,
+                  right: AppPadding.xs,
+                  top: AppPadding.xs,
                   child: Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: EdgeInsets.all(AppPadding.xs),
                     decoration: const BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
@@ -796,9 +907,10 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: Text(
                       '${_cartItems.length}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: screenWidth * 0.025,
+                        fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -812,33 +924,55 @@ class _HomePageState extends State<HomePage> {
               color: Colors.white,
               size: screenWidth * 0.06,
             ),
+            padding: EdgeInsets.all(AppPadding.small),
             onPressed: () {},
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          SingleChildScrollView(child: _buildPromoPage()),
-          SingleChildScrollView(child: _buildHomePage()),
-          SingleChildScrollView(child: _buildFavoritePage()),
-        ],
+      body: SafeArea(
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            SingleChildScrollView(
+              padding: AppPadding.screenPadding,
+              child: _buildPromoPage()
+            ),
+            SingleChildScrollView(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom + AppPadding.medium,
+              ),
+              child: _buildHomePage()
+            ),
+            SingleChildScrollView(
+              padding: AppPadding.screenPadding,
+              child: _buildFavoritePage()
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom,
+          left: AppPadding.medium,
+          right: AppPadding.medium,
+        ),
         decoration: BoxDecoration(
           color: Colors.green,
-          borderRadius: BorderRadius.circular(0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, -2),
+            ),
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildBottomNavItem(Icons.percent, 'PROMO', 0),
-              _buildBottomNavItem(Icons.home, 'HOME', 1),
-              _buildBottomNavItem(Icons.favorite, 'FAVORIT', 2),
-            ],
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildBottomNavItem(Icons.percent, 'PROMO', 0),
+            _buildBottomNavItem(Icons.home, 'HOME', 1),
+            _buildBottomNavItem(Icons.favorite, 'FAVORIT', 2),
+          ],
         ),
       ),
     );
@@ -869,8 +1003,43 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Inisialisasi data dengan error handling
+    try {
+      _loadInitialData();
+    } catch (e) {
+      print('Error loading initial data: $e');
+    }
+  }
+
+  void _loadInitialData() {
+    setState(() {
+      _selectedIndex = 1;
+      _selectedCategory = 'all';
+    });
+  }
+
+  @override
   void dispose() {
-    _searchController.dispose();
+    try {
+      _searchController.dispose();
+    } catch (e) {
+      print('Error disposing controllers: $e');
+    }
     super.dispose();
+  }
+
+  // Fungsi helper untuk memastikan context masih valid
+  bool get _isContextValid {
+    return mounted && context != null;
+  }
+
+  void _showSnackBar(String message) {
+    if (_isContextValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 }
