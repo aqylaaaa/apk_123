@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.happys_food">
     <!-- Permission untuk akses internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Permission untuk menyimpan data -->
@@ -11,8 +12,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     
     <application
-        android:label="happys_food"
         android:name="${applicationName}"
+        android:label="happys_food"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
         android:largeHeap="true"
